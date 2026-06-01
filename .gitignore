@@ -1,4 +1,3 @@
-venv
-.venv
-ruff.toml
-.ruff_cache
+# build output
+/commit-graph
+*.exe
