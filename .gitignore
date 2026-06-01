@@ -1,3 +1,5 @@
 # build output
+/gh-contribs
 /commit-graph
 *.exe
+/dist/

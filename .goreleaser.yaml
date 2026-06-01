@@ -1,0 +1,83 @@
+version: 2
+
+project_name: gh-contribs
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: gh-contribs
+    main: .
+    binary: gh-contribs
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+
+archives:
+  - id: gh-contribs
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^chore:'
+      - '^test:'
+      - Merge pull request
+      - Merge branch
+
+brews:
+  - name: gh-contribs
+    repository:
+      owner: Josef-Hlink
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/Josef-Hlink/gh-contribs
+    description: Your GitHub contribution rhythm, in the terminal
+    license: MIT
+    install: |
+      bin.install "gh-contribs"
+    test: |
+      system "#{bin}/gh-contribs", "--version"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore(formula): bump {{ .ProjectName }} to {{ .Tag }}"
+
+nix:
+  - name: gh-contribs
+    ids:
+      - gh-contribs
+    repository:
+      owner: Josef-Hlink
+      name: nur-packages
+      branch: main
+      token: "{{ .Env.NIX_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/Josef-Hlink/gh-contribs
+    description: Your GitHub contribution rhythm, in the terminal
+    license: mit
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore(nix): bump {{ .ProjectName }} to {{ .Tag }}"

@@ -13,6 +13,9 @@ import (
 // dailyMax is the longest range (in days) shown as a bar-per-day graph.
 const dailyMax = 7
 
+// version is the build version, injected at release time via -ldflags.
+var version = "dev"
+
 type view int
 
 const (
@@ -87,6 +90,9 @@ func parseArgs(argv []string) (config, error) {
 		switch {
 		case a == "-h" || a == "--help":
 			usage(os.Stdout)
+			os.Exit(0)
+		case a == "-v" || a == "--version":
+			fmt.Println("gh-contribs", version)
 			os.Exit(0)
 		case a == "--no-color":
 			color = false
@@ -221,5 +227,6 @@ view:
 other:
   --no-color          disable colored output (also honors the NO_COLOR env var)
   -h, --help          show this help
+  -v, --version       show version
 `)
 }
