@@ -7,6 +7,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -126,14 +128,25 @@ func parseArgs(argv []string) (config, error) {
 		}
 	}
 
-	if len(positional) != 1 {
-		return config{}, fmt.Errorf("expected exactly one username, got %d", len(positional))
+	var username string
+	switch len(positional) {
+	case 0:
+		// No username given — fall back to the gh CLI's authenticated user.
+		u, err := ghUsername()
+		if err != nil {
+			return config{}, err
+		}
+		username = u
+	case 1:
+		username = positional[0]
+	default:
+		return config{}, fmt.Errorf("expected at most one username, got %d", len(positional))
 	}
 	if (fromSet || toSet) && chosen != "" {
 		return config{}, fmt.Errorf("--from/--to cannot be combined with --last-%s", chosen)
 	}
 
-	cfg := config{username: positional[0], color: color}
+	cfg := config{username: username, color: color}
 	cfg.from, cfg.to, cfg.label = resolveRange(chosen, fromSet, toSet, fromT, toT)
 	if cfg.from.After(cfg.to) {
 		return config{}, fmt.Errorf("--from (%s) is after --to (%s)", dateStr(cfg.from), dateStr(cfg.to))
@@ -183,6 +196,26 @@ func resolveView(from, to time.Time, avg bool) view {
 	}
 }
 
+// ghUsername resolves the current user's login from the GitHub CLI, used when no
+// username is passed on the command line. It returns a helpful error when gh is
+// missing or the user isn't authenticated, so the caller can tell them to either
+// sign in or pass a username explicitly.
+func ghUsername() (string, error) {
+	path, err := exec.LookPath("gh")
+	if err != nil {
+		return "", fmt.Errorf("no username given and the GitHub CLI (gh) is not installed — pass a username or install gh")
+	}
+	out, err := exec.Command(path, "api", "user", "--jq", ".login").Output()
+	if err != nil {
+		return "", fmt.Errorf("no username given and the GitHub CLI isn't signed in — run `gh auth login` or pass a username")
+	}
+	login := strings.TrimSpace(string(out))
+	if login == "" {
+		return "", fmt.Errorf("no username given and could not read your login from the gh CLI — pass a username")
+	}
+	return login, nil
+}
+
 func parseDate(s string) (time.Time, error) {
 	t, err := time.Parse("2006-01-02", s)
 	if err != nil {
@@ -209,7 +242,10 @@ func usage(w *os.File) {
 	fmt.Fprint(w, `gh-contribs — your GitHub contribution rhythm, in the terminal
 
 usage:
-  gh-contribs <username> [range] [--avg] [--no-color]
+  gh-contribs [username] [range] [--avg] [--no-color]
+
+  username defaults to the GitHub CLI's authenticated user when gh is installed
+  and signed in (gh auth login).
 
 range (default: last year):
   --last-week         the last 7 days

@@ -90,12 +90,17 @@ go build -o gh-contribs .
 ## Usage
 
 ```bash
+gh-contribs                                     # your own graph, via the gh CLI
 gh-contribs <username>                          # last year, as a grid
 gh-contribs <username> --avg                    # weekday averages
 gh-contribs <username> --last-week              # the last 7 days, a bar per day
 gh-contribs <username> --last-month             # the last month, as a grid
 gh-contribs <username> --from 2024-03-01 --to 2024-03-07
 ```
+
+The username is optional: when omitted, gh-contribs asks the [GitHub CLI](https://cli.github.com/)
+(`gh`) for your authenticated login, so `gh-contribs` on its own shows your own
+graph. You'll get a helpful nudge if `gh` isn't installed or signed in.
 
 | flag                 | description                                                  |
 | -------------------- | ------------------------------------------------------------ |
