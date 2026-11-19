@@ -54,8 +54,12 @@ func fetchLanes(cfg config, weeks []time.Time, sp *spinner) ([]repoLane, error) 
 			return nil, err
 		}
 		if strings.EqualFold(me.Login, cfg.username) {
-			// Your own repos plus collaborator and org repos, private ones included.
+			// Your own repos plus collaborator and org repos, private ones included
+			// unless --only-public.
 			listURL = "https://api.github.com/user/repos?sort=pushed&per_page=50"
+			if cfg.onlyPublic {
+				listURL += "&visibility=public"
+			}
 		}
 	}
 	lister := &repoLister{c: c, next: listURL, since: weeks[0]}

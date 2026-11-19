@@ -93,6 +93,7 @@ type config struct {
 	nRepos       int  // lanes to show
 	allAuthors   bool // count (and rank by) everyone's commits, not just the user's
 	perRepoScale bool // shade each lane on its own scale instead of a shared one
+	onlyPublic   bool // leave out private repos
 }
 
 func parseArgs(argv []string) (config, error) {
@@ -100,7 +101,7 @@ func parseArgs(argv []string) (config, error) {
 	_, noColorEnv := os.LookupEnv("NO_COLOR")
 	spinColor := !noColorEnv
 	avg := false
-	repos, nSet, allAuthors, perRepoScale := false, false, false, false
+	repos, nSet, allAuthors, perRepoScale, onlyPublic := false, false, false, false, false
 	nRepos := defaultRepos
 	chosen := "" // week | month | year, via --last-* flags
 	var fromT, toT time.Time
@@ -152,6 +153,8 @@ func parseArgs(argv []string) (config, error) {
 			allAuthors = true
 		case a == "--per-repo-scale":
 			perRepoScale = true
+		case a == "--only-public":
+			onlyPublic = true
 		case a == "--last-week":
 			err = setRange("week")
 		case a == "--last-month":
@@ -203,11 +206,11 @@ func parseArgs(argv []string) (config, error) {
 		if avg || fromSet || toSet || (chosen != "" && chosen != "year") {
 			return config{}, fmt.Errorf("--repos always covers the last year; drop --avg and the range flags")
 		}
-	} else if nSet || allAuthors || perRepoScale {
-		return config{}, fmt.Errorf("-n, --all-authors and --per-repo-scale only apply to --repos")
+	} else if nSet || allAuthors || perRepoScale || onlyPublic {
+		return config{}, fmt.Errorf("-n, --all-authors, --per-repo-scale and --only-public only apply to --repos")
 	}
 
-	cfg := config{username: username, color: color, spinColor: spinColor, nRepos: nRepos, allAuthors: allAuthors, perRepoScale: perRepoScale}
+	cfg := config{username: username, color: color, spinColor: spinColor, nRepos: nRepos, allAuthors: allAuthors, perRepoScale: perRepoScale, onlyPublic: onlyPublic}
 	cfg.from, cfg.to, cfg.label = resolveRange(chosen, fromSet, toSet, fromT, toT)
 	if cfg.from.After(cfg.to) {
 		return config{}, fmt.Errorf("--from (%s) is after --to (%s)", dateStr(cfg.from), dateStr(cfg.to))
@@ -308,6 +311,7 @@ func usage(w *os.File) {
 usage:
   gh-contribs [username] [range] [--avg] [--no-color]
   gh-contribs [username] --repos [-n N] [--all-authors] [--per-repo-scale]
+                                [--only-public]
 
   username defaults to the GitHub CLI's authenticated user when gh is installed
   and signed in (gh auth login).
@@ -333,6 +337,7 @@ repos (always the last year):
   -n N                number of repos (default 10)
   --all-authors       count and rank by everyone's commits, not just yours
   --per-repo-scale    shade each lane on its own scale (default: shared)
+  --only-public       leave out private repos (e.g. for a screenshot)
 
 other:
   --no-color          disable colored output (also honors the NO_COLOR env var)

@@ -40,6 +40,9 @@ func renderLanes(w io.Writer, cfg config, weeks []time.Time, lanes []repoLane) {
 		scale = "per-repo scale"
 	}
 	fmt.Fprintf(w, "\nWeekly commits per repo, %s — %s\n", cfg.label, cfg.username)
+	if cfg.onlyPublic {
+		scale += ", public repos only"
+	}
 	fmt.Fprintf(w, "%s → %s · %s, %s\n", dateStr(weeks[0]), dateStr(cfg.to), whose, scale)
 
 	tw := termWidth(w)

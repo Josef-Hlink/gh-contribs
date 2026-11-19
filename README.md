@@ -137,6 +137,7 @@ graph. You'll get a helpful nudge if `gh` isn't installed or signed in.
 | `-n N`               | with `--repos`: number of repos (default 10)                 |
 | `--all-authors`      | with `--repos`: count and rank by everyone's commits         |
 | `--per-repo-scale`   | with `--repos`: shade each lane on its own scale             |
+| `--only-public`      | with `--repos`: leave out private repos                      |
 | `--no-color`         | disable colored output (also honors the `NO_COLOR` env var)  |
 | `-h, --help`         | show help                                                    |
 
@@ -148,7 +149,8 @@ terminal (e.g. piped to a file).
 
 `--repos` uses the GitHub API instead of the profile calendar, authenticated
 with `GH_TOKEN` / `GITHUB_TOKEN` or the `gh` CLI's token, so private, org and
-collaborator repos are included (without a token it sees public repos only).
+collaborator repos are included (without a token it sees public repos only;
+`--only-public` leaves private ones out on purpose).
 It counts commits on each repo's default branch by author date, and by default
 only your own commits — both for the counts and for picking the most recently
 active repos. `--all-authors` switches both to everyone's commits. Lanes share
