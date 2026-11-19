@@ -39,7 +39,7 @@ const laneBatch = 8
 // (The stats/contributors endpoint would give weekly counts in one request per
 // repo, but it answers 202 until GitHub has computed them in the background,
 // which can take minutes per repo.)
-func fetchLanes(cfg config, weeks []time.Time) ([]repoLane, error) {
+func fetchLanes(cfg config, weeks []time.Time, sp *spinner) ([]repoLane, error) {
 	c, err := newGHClient()
 	if err != nil {
 		return nil, err
@@ -61,6 +61,7 @@ func fetchLanes(cfg config, weeks []time.Time) ([]repoLane, error) {
 	lister := &repoLister{c: c, next: listURL, since: weeks[0]}
 
 	var lanes []repoLane
+	checked, commits := 0, 0
 	for {
 		var batch []ghRepo
 		for len(batch) < laneBatch {
@@ -83,6 +84,7 @@ func fetchLanes(cfg config, weeks []time.Time) ([]repoLane, error) {
 			}
 		}
 
+		sp.Status("reading commits · %d repos checked · %d commits", checked, commits)
 		results := make([]repoLane, len(batch))
 		errs := make([]error, len(batch))
 		var wg sync.WaitGroup
@@ -97,9 +99,11 @@ func fetchLanes(cfg config, weeks []time.Time) ([]repoLane, error) {
 
 		for i, l := range results {
 			if errs[i] != nil {
-				fmt.Fprintf(os.Stderr, "warning: skipping %s: %v\n", batch[i].FullName, errs[i])
+				sp.Warnf("warning: skipping %s: %v\n", batch[i].FullName, errs[i])
 				continue
 			}
+			checked++
+			commits += l.total
 			if l.total > 0 {
 				lanes = append(lanes, l)
 			}

@@ -42,7 +42,9 @@ func main() {
 
 	if cfg.view == viewRepos {
 		weeks := windowWeeks(cfg.from, cfg.to)
-		lanes, err := fetchLanes(cfg, weeks)
+		sp := startSpinner(cfg.spinColor, "listing repos")
+		lanes, err := fetchLanes(cfg, weeks, sp)
+		sp.Stop()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
@@ -55,7 +57,9 @@ func main() {
 		return
 	}
 
+	sp := startSpinner(cfg.spinColor, "fetching contributions")
 	days, err := fetchRange(cfg.username, cfg.from, cfg.to)
+	sp.Stop()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
@@ -78,9 +82,12 @@ func main() {
 type config struct {
 	username string
 	color    bool
-	from, to time.Time
-	view     view
-	label    string // human description of the range, for titles
+	// spinColor colors the progress indicator on stderr, which can be a
+	// terminal even when stdout (and so color) isn't.
+	spinColor bool
+	from, to  time.Time
+	view      view
+	label     string // human description of the range, for titles
 
 	// --repos view
 	nRepos       int  // lanes to show
@@ -90,6 +97,8 @@ type config struct {
 
 func parseArgs(argv []string) (config, error) {
 	color := useColor()
+	_, noColorEnv := os.LookupEnv("NO_COLOR")
+	spinColor := !noColorEnv
 	avg := false
 	repos, nSet, allAuthors, perRepoScale := false, false, false, false
 	nRepos := defaultRepos
@@ -125,7 +134,7 @@ func parseArgs(argv []string) (config, error) {
 			fmt.Println("gh-contribs", version)
 			os.Exit(0)
 		case a == "--no-color":
-			color = false
+			color, spinColor = false, false
 		case a == "--avg":
 			avg = true
 		case a == "--repos":
@@ -198,7 +207,7 @@ func parseArgs(argv []string) (config, error) {
 		return config{}, fmt.Errorf("-n, --all-authors and --per-repo-scale only apply to --repos")
 	}
 
-	cfg := config{username: username, color: color, nRepos: nRepos, allAuthors: allAuthors, perRepoScale: perRepoScale}
+	cfg := config{username: username, color: color, spinColor: spinColor, nRepos: nRepos, allAuthors: allAuthors, perRepoScale: perRepoScale}
 	cfg.from, cfg.to, cfg.label = resolveRange(chosen, fromSet, toSet, fromT, toT)
 	if cfg.from.After(cfg.to) {
 		return config{}, fmt.Errorf("--from (%s) is after --to (%s)", dateStr(cfg.from), dateStr(cfg.to))
