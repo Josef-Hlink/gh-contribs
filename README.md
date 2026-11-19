@@ -11,6 +11,9 @@ is chosen from the length of the range:
 - the **last year** (default) → a GitHub-style heatmap grid
 - a range of **≤7 days** → a bar per day
 - **`--avg`** → average contributions per weekday (over any range)
+- **`--repos`** → a lane of weekly commits per repo, for the 10 repos you
+  committed to most recently — private and org repos included when you're
+  signed in to `gh`
 
 No browser, no scraping headaches: it reads the plain-HTML calendar GitHub
 serves at `/users/<username>/contributions`.
@@ -58,6 +61,24 @@ Avg per weekday, last year — torvalds
   3045 contributions over 366 days
 ```
 
+Commits per repo — `gh-contribs --repos` (on an 80-column terminal; wider
+ones get square two-column tiles):
+
+```
+Weekly commits per repo, last year — Josef-Hlink
+2025-11-16 → 2026-11-19 · own commits, shared scale
+
+                      Nov   Jan  Feb Mar Apr May  Jun Jul Aug  Sep Oct  Nov
+  klym                ······················▒·▓░·░░░░░▒░▒····░░░·········░░   83
+  dots                ░░░░░░·░▒▒░░░··░░░░░·█░·░░▓▓█▒▒▒▓▒▒·█░░░░░░·░░░░██▓█▓  562
+  fax                 ···················································░▓   24
+  assetblocks/pylona  ··░▒▒░···▒·░░░░░░░░░░·░··░░░░░░░░░░░░·░░·░░·░░░░░░░░░  174
+  forj                ································▓█░··░░░░░▒··░░·▒░░█·  183
+  …
+
+  1172 commits across 10 repos
+```
+
 A short range — `gh-contribs torvalds --last-week`:
 
 ```
@@ -96,6 +117,8 @@ gh-contribs <username> --avg                    # weekday averages
 gh-contribs <username> --last-week              # the last 7 days, a bar per day
 gh-contribs <username> --last-month             # the last month, as a grid
 gh-contribs <username> --from 2024-03-01 --to 2024-03-07
+gh-contribs --repos                             # weekly commits in your 10 latest repos
+gh-contribs --repos -n 5 --per-repo-scale       # 5 lanes, each on its own scale
 ```
 
 The username is optional: when omitted, gh-contribs asks the [GitHub CLI](https://cli.github.com/)
@@ -110,6 +133,10 @@ graph. You'll get a helpful nudge if `gh` isn't installed or signed in.
 | `--from YYYY-MM-DD`  | custom range start                                           |
 | `--to YYYY-MM-DD`    | custom range end                                             |
 | `--avg`              | draw average contributions per weekday instead              |
+| `--repos`            | draw a lane of weekly commits per repo (always the last year) |
+| `-n N`               | with `--repos`: number of repos (default 10)                 |
+| `--all-authors`      | with `--repos`: count and rank by everyone's commits         |
+| `--per-repo-scale`   | with `--repos`: shade each lane on its own scale             |
 | `--no-color`         | disable colored output (also honors the `NO_COLOR` env var)  |
 | `-h, --help`         | show help                                                    |
 
@@ -118,6 +145,15 @@ A range of ≤7 days is drawn as a bar per day; anything longer is a heatmap gri
 year by year and stitched together. A grid wider than your terminal is split
 into stacked blocks. Color is automatically disabled when output isn't a
 terminal (e.g. piped to a file).
+
+`--repos` uses the GitHub API instead of the profile calendar, authenticated
+with `GH_TOKEN` / `GITHUB_TOKEN` or the `gh` CLI's token, so private, org and
+collaborator repos are included (without a token it sees public repos only).
+It counts commits on each repo's default branch by author date, and by default
+only your own commits — both for the counts and for picking the most recently
+active repos. `--all-authors` switches both to everyone's commits. Lanes share
+one shading scale so repos are comparable; `--per-repo-scale` shades each
+repo against its own busiest weeks instead.
 
 ## Requirements
 

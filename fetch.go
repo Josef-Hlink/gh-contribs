@@ -116,20 +116,31 @@ func fetchCalendar(username, query string) ([]day, error) {
 // everything into the lowest bucket — the same outlier handling we observed in
 // GitHub's own levels.
 func recomputeLevels(days []day) {
-	var nz []int
-	for _, d := range days {
-		if d.count > 0 {
-			nz = append(nz, d.count)
-		}
+	counts := make([]int, len(days))
+	for i, d := range days {
+		counts[i] = d.count
 	}
-	if len(nz) == 0 {
-		return
-	}
-	sort.Ints(nz)
-	scale := nz[int(float64(len(nz)-1)*0.98+0.5)]
+	scale := activeScale(counts)
 	for i := range days {
 		days[i].level = levelFor(days[i].count, scale)
 	}
+}
+
+// activeScale is the 98th percentile of the non-zero counts (0 if there are
+// none): the top of the shading scale, clamped so a few outliers don't push
+// everything else into the lowest level.
+func activeScale(counts []int) int {
+	var nz []int
+	for _, c := range counts {
+		if c > 0 {
+			nz = append(nz, c)
+		}
+	}
+	if len(nz) == 0 {
+		return 0
+	}
+	sort.Ints(nz)
+	return nz[int(float64(len(nz)-1)*0.98+0.5)]
 }
 
 func levelFor(count, max int) int {

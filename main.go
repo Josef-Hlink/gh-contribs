@@ -1,19 +1,24 @@
 // Command gh-contribs fetches a GitHub user's public contribution graph and
 // prints it in the terminal. A short range (≤7 days) is shown as a bar per day;
 // a longer range is shown as a GitHub-style heatmap grid, or as average
-// contributions per weekday with --avg.
+// contributions per weekday with --avg. With --repos it instead shows weekly
+// commits per repo (private ones included when signed in to gh), a lane each.
 package main
 
 import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
 // dailyMax is the longest range (in days) shown as a bar-per-day graph.
 const dailyMax = 7
+
+// defaultRepos is how many lanes --repos shows unless -n says otherwise.
+const defaultRepos = 10
 
 // version is the build version, injected at release time via -ldflags.
 var version = "dev"
@@ -24,6 +29,7 @@ const (
 	viewDaily view = iota
 	viewAverages
 	viewGrid
+	viewRepos
 )
 
 func main() {
@@ -32,6 +38,21 @@ func main() {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		usage(os.Stderr)
 		os.Exit(2)
+	}
+
+	if cfg.view == viewRepos {
+		weeks := windowWeeks(cfg.from, cfg.to)
+		lanes, err := fetchLanes(cfg, weeks)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		if len(lanes) == 0 {
+			fmt.Fprintf(os.Stderr, "error: no commits by %q in %s in any repo visible to you\n", cfg.username, cfg.label)
+			os.Exit(1)
+		}
+		renderLanes(os.Stdout, cfg, weeks, lanes)
+		return
 	}
 
 	days, err := fetchRange(cfg.username, cfg.from, cfg.to)
@@ -60,11 +81,18 @@ type config struct {
 	from, to time.Time
 	view     view
 	label    string // human description of the range, for titles
+
+	// --repos view
+	nRepos       int  // lanes to show
+	allAuthors   bool // count (and rank by) everyone's commits, not just the user's
+	perRepoScale bool // shade each lane on its own scale instead of a shared one
 }
 
 func parseArgs(argv []string) (config, error) {
 	color := useColor()
 	avg := false
+	repos, nSet, allAuthors, perRepoScale := false, false, false, false
+	nRepos := defaultRepos
 	chosen := "" // week | month | year, via --last-* flags
 	var fromT, toT time.Time
 	var fromSet, toSet bool
@@ -100,6 +128,21 @@ func parseArgs(argv []string) (config, error) {
 			color = false
 		case a == "--avg":
 			avg = true
+		case a == "--repos":
+			repos = true
+		case a == "-n":
+			var v string
+			if v, err = val(); err == nil {
+				nRepos, err = strconv.Atoi(v)
+				if err != nil || nRepos < 1 {
+					err = fmt.Errorf("-n wants a positive number, got %q", v)
+				}
+				nSet = true
+			}
+		case a == "--all-authors":
+			allAuthors = true
+		case a == "--per-repo-scale":
+			perRepoScale = true
 		case a == "--last-week":
 			err = setRange("week")
 		case a == "--last-month":
@@ -145,13 +188,25 @@ func parseArgs(argv []string) (config, error) {
 	if (fromSet || toSet) && chosen != "" {
 		return config{}, fmt.Errorf("--from/--to cannot be combined with --last-%s", chosen)
 	}
+	if repos {
+		// The repo walk relies on pushed_at to know when to stop, which only
+		// bounds a window that ends today; so lanes always cover the last year.
+		if avg || fromSet || toSet || (chosen != "" && chosen != "year") {
+			return config{}, fmt.Errorf("--repos always covers the last year; drop --avg and the range flags")
+		}
+	} else if nSet || allAuthors || perRepoScale {
+		return config{}, fmt.Errorf("-n, --all-authors and --per-repo-scale only apply to --repos")
+	}
 
-	cfg := config{username: username, color: color}
+	cfg := config{username: username, color: color, nRepos: nRepos, allAuthors: allAuthors, perRepoScale: perRepoScale}
 	cfg.from, cfg.to, cfg.label = resolveRange(chosen, fromSet, toSet, fromT, toT)
 	if cfg.from.After(cfg.to) {
 		return config{}, fmt.Errorf("--from (%s) is after --to (%s)", dateStr(cfg.from), dateStr(cfg.to))
 	}
 	cfg.view = resolveView(cfg.from, cfg.to, avg)
+	if repos {
+		cfg.view = viewRepos
+	}
 	return cfg, nil
 }
 
@@ -243,6 +298,7 @@ func usage(w *os.File) {
 
 usage:
   gh-contribs [username] [range] [--avg] [--no-color]
+  gh-contribs [username] --repos [-n N] [--all-authors] [--per-repo-scale]
 
   username defaults to the GitHub CLI's authenticated user when gh is installed
   and signed in (gh auth login).
@@ -259,6 +315,15 @@ view:
   GitHub-style heatmap grid.
   --avg               instead draw average contributions per weekday
                       (ignored for ≤7-day ranges, which are already per-day)
+
+repos (always the last year):
+  --repos             a lane of weekly commits per repo, for the repos you
+                      committed to most recently; includes private and org
+                      repos when signed in to gh (or GH_TOKEN is set).
+                      Counts commits on each repo's default branch.
+  -n N                number of repos (default 10)
+  --all-authors       count and rank by everyone's commits, not just yours
+  --per-repo-scale    shade each lane on its own scale (default: shared)
 
 other:
   --no-color          disable colored output (also honors the NO_COLOR env var)

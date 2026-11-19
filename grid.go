@@ -99,23 +99,33 @@ func printGridBlock(w io.Writer, cfg config, cols []gcol) {
 	}
 }
 
-// monthLabelLine places a month abbreviation above the first column of each
-// month. The month is keyed on the week's Saturday, so the label lands on the
-// week that first reaches into the new month (matching GitHub). Labels that
-// would overlap the previous one or run off the right edge are skipped.
+// monthLabelLine labels the grid's week columns with their months.
 func monthLabelLine(cols []gcol) string {
-	width := gridGutter + len(cols)*cellW
+	weeks := make([]time.Time, len(cols))
+	for i, c := range cols {
+		weeks[i] = c.weekStart
+	}
+	return monthLabels(weeks, gridGutter, cellW)
+}
+
+// monthLabels places a month abbreviation above the first of a run of week
+// columns (each cw wide, after a gutter) that falls in a new month. The month
+// is keyed on the week's Saturday, so the label lands on the week that first
+// reaches into the new month (matching GitHub). Labels that would overlap the
+// previous one or run off the right edge are skipped.
+func monthLabels(weeks []time.Time, gutter, cw int) string {
+	width := gutter + len(weeks)*cw
 	line := []rune(strings.Repeat(" ", width))
 	prev := time.Month(0)
 	lastEnd := 0
-	for i, c := range cols {
-		sat := c.weekStart.AddDate(0, 0, 6)
+	for i, ws := range weeks {
+		sat := ws.AddDate(0, 0, 6)
 		if sat.Month() == prev {
 			continue
 		}
 		prev = sat.Month()
 		label := sat.Format("Jan")
-		pos := gridGutter + i*cellW
+		pos := gutter + i*cw
 		if pos < lastEnd || pos+len(label) > width {
 			continue
 		}
@@ -127,14 +137,18 @@ func monthLabelLine(cols []gcol) string {
 	return strings.TrimRight(string(line), " ")
 }
 
-func gridCell(cfg config, level int) string {
+func gridCell(cfg config, level int) string { return tile(cfg, level, cellW) }
+
+// tile draws one heatmap cell cw columns wide; a negative level is blank
+// (no data, e.g. week padding).
+func tile(cfg config, level, cw int) string {
 	if level < 0 {
-		return strings.Repeat(" ", cellW) // no data for this day (week padding)
+		return strings.Repeat(" ", cw)
 	}
 	if cfg.color {
-		return colorize(strings.Repeat("█", cellW), gridPalette[level])
+		return colorize(strings.Repeat("█", cw), gridPalette[level])
 	}
-	return strings.Repeat(string(gridGlyphs[level]), cellW)
+	return strings.Repeat(string(gridGlyphs[level]), cw)
 }
 
 // renderLegend prints a vertical key mapping each level's swatch to the range of
