@@ -143,11 +143,16 @@ func activeScale(counts []int) int {
 	return nz[int(float64(len(nz)-1)*0.98+0.5)]
 }
 
-func levelFor(count, max int) int {
-	if count <= 0 || max <= 0 {
+func levelFor(count, max int) int { return levelOf(float64(count), float64(max)) }
+
+// levelOf buckets v into level 0–4 by its share of max, with cutoffs at ¼, ½
+// and ¾. It takes floats so fractional values (weekday averages) shade on the
+// same scale as day counts.
+func levelOf(v, max float64) int {
+	if v <= 0 || max <= 0 {
 		return 0
 	}
-	switch r := float64(count) / float64(max); {
+	switch r := v / max; {
 	case r <= 0.25:
 		return 1
 	case r <= 0.5:

@@ -7,16 +7,6 @@ import (
 	"time"
 )
 
-// gridPalette is GitHub's 5-level scale (empty + 4 greens), tuned to read on a
-// dark terminal: level 0 is a faint grey, levels 1–4 ramp up in green.
-var gridPalette = [5][3]int{
-	{48, 54, 61},  // 0 — empty   (#30363d)
-	{14, 68, 41},  // 1           (#0e4429)
-	{0, 109, 50},  // 2           (#006d32)
-	{38, 166, 65}, // 3           (#26a641)
-	{57, 211, 83}, // 4           (#39d353)
-}
-
 // gridGlyphs shade the levels when color is disabled.
 var gridGlyphs = [5]rune{'·', '░', '▒', '▓', '█'}
 
@@ -146,7 +136,7 @@ func tile(cfg config, level, cw int) string {
 		return strings.Repeat(" ", cw)
 	}
 	if cfg.color {
-		return colorize(strings.Repeat("█", cw), gridPalette[level])
+		return colorize(strings.Repeat("█", cw), palette[level])
 	}
 	return strings.Repeat(string(gridGlyphs[level]), cw)
 }

@@ -10,15 +10,6 @@ import (
 	"golang.org/x/term"
 )
 
-// GitHub's contribution palette, darkest first — used to shade bars by how
-// active they are relative to the busiest bar in the chart.
-var palette = [][3]int{
-	{56, 108, 62},   // #386c3e dark green
-	{83, 159, 87},   // #539f57 normal green
-	{105, 193, 110}, // #69c16e light green
-	{172, 231, 174}, // #ace7ae lightest green
-}
-
 var weekdayLabels = [7]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
 
 const block = '█'
@@ -79,8 +70,8 @@ func dateRange(days []day) string {
 	return fmt.Sprintf("%s → %s", days[0].date.Format("2006-01-02"), days[len(days)-1].date.Format("2006-01-02"))
 }
 
-// drawChart renders a horizontal bar chart: left labels, green bars scaled to
-// the largest value, and right-aligned stat text.
+// drawChart renders a horizontal bar chart: left labels, bars scaled and
+// shaded relative to the largest value, and right-aligned stat text.
 func drawChart(w io.Writer, cfg config, header, sub string, labels, stats []string, values []float64, footer string) {
 	labelW := maxLen(labels)
 	maxVal := 0.0
@@ -99,24 +90,12 @@ func drawChart(w io.Writer, cfg config, header, sub string, labels, stats []stri
 		}
 		bar := strings.Repeat(string(block), filled)
 		if cfg.color {
-			bar = colorize(bar, shade(values[i], maxVal))
+			bar = colorize(bar, palette[levelOf(values[i], maxVal)])
 		}
 		pad := strings.Repeat(" ", bw-filled)
 		fmt.Fprintf(w, "  %-*s  %s%s  %s\n", labelW, labels[i], bar, pad, stats[i])
 	}
 	fmt.Fprintf(w, "\n  %s\n\n", footer)
-}
-
-// shade buckets a value into one of the four palette colors by its share of max.
-func shade(v, max float64) [3]int {
-	if max <= 0 {
-		return palette[0]
-	}
-	idx := int(v / max * float64(len(palette)))
-	if idx >= len(palette) {
-		idx = len(palette) - 1
-	}
-	return palette[idx]
 }
 
 func colorize(s string, c [3]int) string {
