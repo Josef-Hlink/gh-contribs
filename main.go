@@ -104,7 +104,8 @@ func parseArgs(argv []string) (config, error) {
 	avg := false
 	repos, nSet, allAuthors, perRepoScale, onlyPublic := false, false, false, false, false
 	nRepos := defaultRepos
-	th, _ := lookupTheme(defaultTheme)
+	var th theme
+	themeSet := false
 	chosen := "" // week | month | year, via --last-* flags
 	var fromT, toT time.Time
 	var fromSet, toSet bool
@@ -142,6 +143,7 @@ func parseArgs(argv []string) (config, error) {
 			var v string
 			if v, err = val(); err == nil {
 				th, err = lookupTheme(v)
+				themeSet = true
 			}
 		case a == "--avg":
 			avg = true
@@ -203,6 +205,13 @@ func parseArgs(argv []string) (config, error) {
 		username = positional[0]
 	default:
 		return config{}, fmt.Errorf("expected at most one username, got %d", len(positional))
+	}
+	if !themeSet {
+		t, err := envTheme()
+		if err != nil {
+			return config{}, err
+		}
+		th = t
 	}
 	if (fromSet || toSet) && chosen != "" {
 		return config{}, fmt.Errorf("--from/--to cannot be combined with --last-%s", chosen)
@@ -347,7 +356,8 @@ repos (always the last year):
   --only-public       leave out private repos (e.g. for a screenshot)
 
 other:
-  --theme NAME        color theme: `+themeNames()+` (default `+defaultTheme+`)
+  --theme NAME        color theme: `+themeNames()+` (default `+defaultTheme+`,
+                      or $`+themeEnv+` when set)
   --no-color          disable colored output (also honors the NO_COLOR env var)
   -h, --help          show this help
   -v, --version       show version

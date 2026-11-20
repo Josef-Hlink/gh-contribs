@@ -147,7 +147,8 @@ A range of ≤7 days is drawn as a bar per day; anything longer is a heatmap gri
 (or weekday averages with `--avg`). Ranges spanning multiple years are fetched
 year by year and stitched together. A grid wider than your terminal is split
 into stacked blocks. Color is automatically disabled when output isn't a
-terminal (e.g. piped to a file).
+terminal (e.g. piped to a file). Set `GH_CONTRIBS_THEME` (e.g. in your shell
+profile) to pick a default theme; `--theme` overrides it.
 
 `--repos` uses the GitHub API instead of the profile calendar, authenticated
 with `GH_TOKEN` / `GITHUB_TOKEN` or the `gh` CLI's token, so private, org and

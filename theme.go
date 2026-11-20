@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -25,8 +26,26 @@ var themes = []struct {
 	{"purple", theme{empty, {60, 30, 112}, {110, 64, 201}, {163, 113, 247}, {210, 168, 255}}}, // #3c1e70 #6e40c9 #a371f7 #d2a8ff
 }
 
-// defaultTheme is used when --theme isn't given.
+// defaultTheme is used when neither --theme nor themeEnv is set.
 const defaultTheme = "green"
+
+// themeEnv names the environment variable that sets the default theme;
+// --theme overrides it.
+const themeEnv = "GH_CONTRIBS_THEME"
+
+// envTheme is the theme to use when --theme isn't given: themeEnv's if it's
+// set and non-empty, else defaultTheme.
+func envTheme() (theme, error) {
+	name := os.Getenv(themeEnv)
+	if name == "" {
+		return lookupTheme(defaultTheme)
+	}
+	t, err := lookupTheme(name)
+	if err != nil {
+		return theme{}, fmt.Errorf("%s: %w", themeEnv, err)
+	}
+	return t, nil
+}
 
 // themeNames lists the theme names, comma-separated, for help and errors.
 func themeNames() string {
