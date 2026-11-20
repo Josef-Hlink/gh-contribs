@@ -23,7 +23,7 @@ type scan struct {
 	levels   []int
 }
 
-func (s *scan) frame(color bool) string {
+func (s *scan) frame(tc config) string {
 	if s.levels == nil {
 		s.levels, s.dir = make([]int, spinTiles), 1
 	}
@@ -31,7 +31,7 @@ func (s *scan) frame(color bool) string {
 		s.levels[i] = max(0, s.levels[i]-1)
 	}
 	s.levels[s.pos] = 4
-	out := tileStrip(s.levels, color)
+	out := tileStrip(s.levels, tc)
 	if s.pos+s.dir < 0 || s.pos+s.dir >= spinTiles {
 		s.dir = -s.dir
 	}
@@ -40,10 +40,10 @@ func (s *scan) frame(color bool) string {
 }
 
 // tileStrip renders levels as adjacent single-column heatmap tiles.
-func tileStrip(levels []int, color bool) string {
+func tileStrip(levels []int, tc config) string {
 	var b strings.Builder
 	for _, l := range levels {
-		b.WriteString(tile(config{color: color}, l, 1))
+		b.WriteString(tile(tc, l, 1))
 	}
 	return b.String()
 }
@@ -54,24 +54,25 @@ func tileStrip(levels []int, color bool) string {
 type spinner struct {
 	mu     sync.Mutex
 	anim   scan
-	color  bool
+	tiles  config // color and theme for the indicator's tiles
 	status string
 	frame  string
 	stop   chan struct{}
 	done   chan struct{}
 }
 
-func startSpinner(color bool, status string) *spinner {
+// startSpinner shows the indicator, shaded with th when color is on.
+func startSpinner(color bool, th theme, status string) *spinner {
 	if !term.IsTerminal(int(os.Stderr.Fd())) {
 		return nil
 	}
 	s := &spinner{
-		color:  color,
+		tiles:  config{color: color, theme: th},
 		status: status,
 		stop:   make(chan struct{}),
 		done:   make(chan struct{}),
 	}
-	s.frame = s.anim.frame(color)
+	s.frame = s.anim.frame(s.tiles)
 	s.draw()
 	go s.run()
 	return s
@@ -87,7 +88,7 @@ func (s *spinner) run() {
 			return
 		case <-t.C:
 			s.mu.Lock()
-			s.frame = s.anim.frame(s.color)
+			s.frame = s.anim.frame(s.tiles)
 			s.draw()
 			s.mu.Unlock()
 		}

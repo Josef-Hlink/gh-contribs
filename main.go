@@ -42,7 +42,7 @@ func main() {
 
 	if cfg.view == viewRepos {
 		weeks := windowWeeks(cfg.from, cfg.to)
-		sp := startSpinner(cfg.spinColor, "listing repos")
+		sp := startSpinner(cfg.spinColor, cfg.theme, "listing repos")
 		lanes, err := fetchLanes(cfg, weeks, sp)
 		sp.Stop()
 		if err != nil {
@@ -57,7 +57,7 @@ func main() {
 		return
 	}
 
-	sp := startSpinner(cfg.spinColor, "fetching contributions")
+	sp := startSpinner(cfg.spinColor, cfg.theme, "fetching contributions")
 	days, err := fetchRange(cfg.username, cfg.from, cfg.to)
 	sp.Stop()
 	if err != nil {
@@ -85,6 +85,7 @@ type config struct {
 	// spinColor colors the progress indicator on stderr, which can be a
 	// terminal even when stdout (and so color) isn't.
 	spinColor bool
+	theme     theme // colors for levels 0–4
 	from, to  time.Time
 	view      view
 	label     string // human description of the range, for titles
@@ -103,6 +104,7 @@ func parseArgs(argv []string) (config, error) {
 	avg := false
 	repos, nSet, allAuthors, perRepoScale, onlyPublic := false, false, false, false, false
 	nRepos := defaultRepos
+	th, _ := lookupTheme(defaultTheme)
 	chosen := "" // week | month | year, via --last-* flags
 	var fromT, toT time.Time
 	var fromSet, toSet bool
@@ -136,6 +138,11 @@ func parseArgs(argv []string) (config, error) {
 			os.Exit(0)
 		case a == "--no-color":
 			color, spinColor = false, false
+		case a == "--theme":
+			var v string
+			if v, err = val(); err == nil {
+				th, err = lookupTheme(v)
+			}
 		case a == "--avg":
 			avg = true
 		case a == "--repos":
@@ -210,7 +217,7 @@ func parseArgs(argv []string) (config, error) {
 		return config{}, fmt.Errorf("-n, --all-authors, --per-repo-scale and --only-public only apply to --repos")
 	}
 
-	cfg := config{username: username, color: color, spinColor: spinColor, nRepos: nRepos, allAuthors: allAuthors, perRepoScale: perRepoScale, onlyPublic: onlyPublic}
+	cfg := config{username: username, color: color, spinColor: spinColor, theme: th, nRepos: nRepos, allAuthors: allAuthors, perRepoScale: perRepoScale, onlyPublic: onlyPublic}
 	cfg.from, cfg.to, cfg.label = resolveRange(chosen, fromSet, toSet, fromT, toT)
 	if cfg.from.After(cfg.to) {
 		return config{}, fmt.Errorf("--from (%s) is after --to (%s)", dateStr(cfg.from), dateStr(cfg.to))
@@ -309,7 +316,7 @@ func usage(w *os.File) {
 	fmt.Fprint(w, `gh-contribs — your GitHub contribution rhythm, in the terminal
 
 usage:
-  gh-contribs [username] [range] [--avg] [--no-color]
+  gh-contribs [username] [range] [--avg] [--theme NAME] [--no-color]
   gh-contribs [username] --repos [-n N] [--all-authors] [--per-repo-scale]
                                 [--only-public]
 
@@ -340,6 +347,7 @@ repos (always the last year):
   --only-public       leave out private repos (e.g. for a screenshot)
 
 other:
+  --theme NAME        color theme: `+themeNames()+` (default `+defaultTheme+`)
   --no-color          disable colored output (also honors the NO_COLOR env var)
   -h, --help          show this help
   -v, --version       show version

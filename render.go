@@ -90,7 +90,7 @@ func drawChart(w io.Writer, cfg config, header, sub string, labels, stats []stri
 		}
 		bar := strings.Repeat(string(block), filled)
 		if cfg.color {
-			bar = colorize(bar, palette[levelOf(values[i], maxVal)])
+			bar = colorize(bar, cfg.theme[levelOf(values[i], maxVal)])
 		}
 		pad := strings.Repeat(" ", bw-filled)
 		fmt.Fprintf(w, "  %-*s  %s%s  %s\n", labelW, labels[i], bar, pad, stats[i])

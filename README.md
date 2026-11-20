@@ -119,6 +119,7 @@ gh-contribs <username> --last-month             # the last month, as a grid
 gh-contribs <username> --from 2024-03-01 --to 2024-03-07
 gh-contribs --repos                             # weekly commits in your 10 latest repos
 gh-contribs --repos -n 5 --per-repo-scale       # 5 lanes, each on its own scale
+gh-contribs --theme blue                        # shade in blue instead of green
 ```
 
 The username is optional: when omitted, gh-contribs asks the [GitHub CLI](https://cli.github.com/)
@@ -138,6 +139,7 @@ graph. You'll get a helpful nudge if `gh` isn't installed or signed in.
 | `--all-authors`      | with `--repos`: count and rank by everyone's commits         |
 | `--per-repo-scale`   | with `--repos`: shade each lane on its own scale             |
 | `--only-public`      | with `--repos`: leave out private repos                      |
+| `--theme NAME`       | color theme: `green` (default), `blue`, `orange`, `purple`   |
 | `--no-color`         | disable colored output (also honors the `NO_COLOR` env var)  |
 | `-h, --help`         | show help                                                    |
 

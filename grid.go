@@ -136,7 +136,7 @@ func tile(cfg config, level, cw int) string {
 		return strings.Repeat(" ", cw)
 	}
 	if cfg.color {
-		return colorize(strings.Repeat("█", cw), palette[level])
+		return colorize(strings.Repeat("█", cw), cfg.theme[level])
 	}
 	return strings.Repeat(string(gridGlyphs[level]), cw)
 }
